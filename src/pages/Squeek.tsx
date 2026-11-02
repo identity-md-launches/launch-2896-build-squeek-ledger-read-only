@@ -1,8 +1,9 @@
-import { apiGet, ApiError, type ActivityEntry, type ActivityResponse, type SqueekResponse } from "../api";
+import { ApiError, unavailableText, type SqueekResponse } from "../api";
 import { DOC } from "../config";
 import { getEconomy, getSqueek } from "../data";
 import { useAsync } from "../hooks";
 import { big, dateTime, groupDigits, int } from "../lib/format";
+import { historyFor } from "../lib/history";
 import { AddrLink, DocLink, Gate, Loading, ErrorNotice, Notice, Stat, TxLink } from "../components/ui";
 
 const KIND: Record<string, string> = {
@@ -14,30 +15,6 @@ const KIND: Record<string, string> = {
 };
 
 const MERGE_LABEL: Record<string, string> = { ready: "Can merge", cooldown: "Cooldown", terminal: "Max level", merges_closed: "Merges closed" };
-
-function touches(e: ActivityEntry, id: string) {
-  return e.tokenId === id || e.survivorTokenId === id || e.donorTokenId === id;
-}
-
-/** The holder's activity, filtered to this Squeek. Follows nextCursor for up to 10 pages of 100. */
-async function historyFor(holder: string, id: string, signal: AbortSignal) {
-  const out: ActivityEntry[] = [];
-  let cursor: string | null = null;
-  let complete = false;
-  for (let i = 0; i < 10; i += 1) {
-    const q = new URLSearchParams({ limit: "100" });
-    if (cursor) q.set("cursor", cursor);
-    const r: ActivityResponse = await apiGet<ActivityResponse>(`/v1/accounts/${holder}/activity?${q}`, signal);
-    if (r.status !== "available") return { status: r, entries: out, complete };
-    out.push(...(r.activity ?? []).filter((e) => touches(e, id)));
-    cursor = r.nextCursor ?? null;
-    if (!cursor) {
-      complete = true;
-      break;
-    }
-  }
-  return { status: null, entries: out, complete };
-}
 
 export function SqueekPage({ id }: { id: string }) {
   const valid = /^\d{1,4}$/.test(id) && Number(id) >= 1 && Number(id) <= 9999;
@@ -62,9 +39,9 @@ export function SqueekPage({ id }: { id: string }) {
 function SqueekView({ d, id }: { d: SqueekResponse; id: string }) {
   const [econ] = useAsync(() => getEconomy(), []);
   const c = d.custody;
-  const holder = c?.depositor ?? c?.owner ?? null;
+  const holder = c?.burned ? null : c?.depositor ?? c?.owner ?? null;
   const [hist, retryHist] = useAsync(
-    (signal) => (holder && !c?.burned ? historyFor(holder, id, signal) : Promise.resolve(null)),
+    (signal) => historyFor(holder, id, signal),
     [holder, id],
   );
   const level = d.level ?? 0;
@@ -143,21 +120,20 @@ function SqueekView({ d, id }: { d: SqueekResponse; id: string }) {
         )}
         <h2 className="pixel h2">History</h2>
         <p className="small">
-          From the holder's <DocLink href={DOC.activity}>account activity</DocLink>, filtered to this Squeek. Each row links to its Ethereum transaction.
+          From <DocLink href={DOC.events}>player events</DocLink> and <DocLink href={DOC.activity}>account activity</DocLink>, following previous owners. Each row links to its Ethereum transaction.
         </p>
-        {c?.burned ? (
-          <Notice title="This Squeek is burned">
-            <p>A burned Squeek has no holder whose history the API can list.</p>
+        {hist.state === "done" && hist.data.status && (
+          <Notice kind="warn" title="History is incomplete" action={<button type="button" className="btn btn-quiet" onClick={retryHist}>Try again</button>}>
+            <p>{unavailableText(hist.data.status.reason)} Any rows below are the events available so far.</p>
           </Notice>
-        ) : hist.state === "loading" ? (
+        )}
+        {hist.state === "loading" ? (
           <Loading label="Reading history…" />
         ) : hist.state === "error" ? (
           <ErrorNotice error={hist.error} retry={retryHist} />
-        ) : !hist.data ? (
-          <p>No holder recorded.</p>
         ) : hist.data.entries.length === 0 ? (
-          <Notice title="No recorded events for this Squeek yet">
-            <p>The holder's activity has no deposits, withdrawals, merges or transfers involving #{id}.</p>
+          hist.data.complete && <Notice title="No recorded events for this Squeek yet">
+            <p>The available player feed and account histories have no events involving #{id}.</p>
           </Notice>
         ) : (
           <div className="table-wrap">
@@ -195,7 +171,6 @@ function SqueekView({ d, id }: { d: SqueekResponse; id: string }) {
             </table>
           </div>
         )}
-        {hist.state === "done" && hist.data && !hist.data.complete && <p className="small">Only the holder's newest 1,000 activity entries were searched.</p>}
         <p className="small">
           Data: <DocLink href={DOC.squeek}>/v1/squeeks/{id}</DocLink>
         </p>

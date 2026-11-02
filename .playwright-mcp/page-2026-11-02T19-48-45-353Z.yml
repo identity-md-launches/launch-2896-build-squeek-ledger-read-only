@@ -1,0 +1,34 @@
+- generic [ref=f1e2]:
+  - link "Skip to content" [ref=f1e3] [cursor=pointer]:
+    - /url: "#main"
+  - banner [ref=f1e4]:
+    - generic [ref=f1e5]:
+      - link "Squeek Ledger home" [ref=f1e6] [cursor=pointer]:
+        - /url: "#/"
+        - generic [ref=f1e7]: Squeek Ledger
+      - generic [ref=f1e8]: Sepolia
+      - button "Switch to dark mode" [ref=f1e9] [cursor=pointer]: Dark
+    - navigation "Main" [ref=f1e10]:
+      - link "Holdings" [ref=f1e11] [cursor=pointer]:
+        - /url: "#/"
+      - link "Merge" [ref=f1e12] [cursor=pointer]:
+        - /url: "#/merge"
+      - link "Earnings" [ref=f1e13] [cursor=pointer]:
+        - /url: "#/earnings"
+      - link "Network" [ref=f1e14] [cursor=pointer]:
+        - /url: "#/network"
+  - main [ref=f1e15]:
+    - region [ref=f1e16]:
+      - paragraph [ref=f1e17]:
+        - link "Back" [ref=f1e18] [cursor=pointer]:
+          - /url: "#/"
+      - 'heading "Squeek #8932" [level=1] [ref=f1e19]'
+      - status [ref=f1e20]: Reading this Squeek…
+  - contentinfo [ref=f1e22]:
+    - generic [ref=f1e23]:
+      - paragraph [ref=f1e24]: Unofficial community tool, read-only. Data from api.squeekchain.com and Ethereum.
+      - paragraph [ref=f1e25]:
+        - link "docs.squeekchain.com" [ref=f1e26] [cursor=pointer]:
+          - /url: https://docs.squeekchain.com/
+        - link "squeekchain.com/genesis" [ref=f1e27] [cursor=pointer]:
+          - /url: https://squeekchain.com/genesis

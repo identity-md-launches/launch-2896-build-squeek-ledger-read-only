@@ -36,6 +36,8 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
       if ((e as Error).name === "AbortError") throw e;
       throw new ApiError(0, "network", "Could not reach api.squeekchain.com. Check your connection and try again.");
     }
+    const noStore = /(?:^|,)\s*no-store\b/i.test(res.headers.get("cache-control") ?? "");
+    if (noStore) etagCache.delete(url);
     if (res.status === 304 && cached) return cached.body as T;
     if ((res.status === 429 || res.status === 503 || res.status === 504) && attempt < 3) {
       const wait = Number(res.headers.get("retry-after") ?? "2");
@@ -53,7 +55,8 @@ export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> 
       throw new ApiError(res.status, code, describeError(res.status, code));
     }
     const etag = res.headers.get("etag");
-    if (etag) etagCache.set(url, { etag, body });
+    if (!noStore && (body as Envelope)?.status !== "unavailable" && etag) etagCache.set(url, { etag, body });
+    else etagCache.delete(url);
     return body as T;
   }
 }
@@ -196,7 +199,7 @@ export interface SqueekResponse extends Envelope {
 export interface ActivityEntry {
   id: string;
   kind: string;
-  source: { blockNumber: string; blockTimestamp: string; transactionHash: string };
+  source: { blockNumber: string; blockTimestamp: string; transactionHash: string; blockHash?: string; transactionIndex?: string; logIndex?: string };
   account?: string;
   tokenId?: string;
   survivorTokenId?: string;
@@ -212,6 +215,16 @@ export interface ActivityResponse extends Envelope {
   activity?: ActivityEntry[];
   nextCursor?: string | null;
   total?: string;
+}
+export interface EventsResponse extends Envelope {
+  events?: {
+    id: string;
+    type: string;
+    occurredAt: string;
+    source: Omit<ActivityEntry["source"], "blockTimestamp"> & { kind: string };
+    payload: Omit<ActivityEntry, "id" | "kind" | "source">;
+  }[];
+  nextCursor?: string | null;
 }
 
 /** Follows nextCursor until the last page. Restarts once from page one on 409 cursor_invalidated. */

@@ -1,21 +1,21 @@
-import { apiGet, getAllAccountPages, type AccountResponse, type EconomyResponse, type SettlementsResponse, type SqueekResponse } from "./api";
+import { apiGet, getAllAccountPages, type EconomyResponse, type SettlementsResponse, type SqueekResponse } from "./api";
 
-/** Short-lived in-memory memo so moving between pages does not refetch everything. */
-const memo = new Map<string, { at: number; p: Promise<unknown> }>();
-function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
-  const hit = memo.get(key);
-  if (hit && Date.now() - hit.at < ttlMs) return hit.p as Promise<T>;
+/** Share simultaneous requests only. Settled responses follow HTTP/ETag policy in apiGet. */
+const pending = new Map<string, Promise<unknown>>();
+function inFlight<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = pending.get(key);
+  if (hit) return hit as Promise<T>;
   const p = load();
-  memo.set(key, { at: Date.now(), p });
-  p.catch(() => memo.delete(key));
+  pending.set(key, p);
+  const clear = () => pending.delete(key);
+  p.then(clear, clear);
   return p;
 }
 
-// Accounts are never cached by the API (no-store); keep a 15 s memo only for page switches.
-export const getAccount = (addr: string) => cached(`acct:${addr}`, 15_000, () => getAllAccountPages(addr)) as Promise<AccountResponse>;
-export const getEconomy = () => cached("economy", 5_000, () => apiGet<EconomyResponse>("/v1/economy/state"));
-export const getSettlements7d = () => cached("settle7d", 60_000, () => apiGet<SettlementsResponse>("/v1/settlements?range=7d"));
-export const getSqueek = (id: string) => cached(`sq:${id}`, 5_000, () => apiGet<SqueekResponse>(`/v1/squeeks/${id}`));
+export const getAccount = (addr: string) => inFlight(`acct:${addr}`, () => getAllAccountPages(addr));
+export const getEconomy = () => inFlight("economy", () => apiGet<EconomyResponse>("/v1/economy/state"));
+export const getSettlements7d = () => inFlight("settle7d", () => apiGet<SettlementsResponse>("/v1/settlements?range=7d"));
+export const getSqueek = (id: string) => inFlight(`sq:${id}`, () => apiGet<SqueekResponse>(`/v1/squeeks/${id}`));
 
 /** Limits concurrent Squeek metadata requests (the metadata class allows 20/s; 4 at a time stays well inside it). */
 let active = 0;

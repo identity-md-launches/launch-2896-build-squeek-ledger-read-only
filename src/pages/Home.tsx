@@ -87,7 +87,7 @@ function AccountView({ d, address }: { d: AccountResponse; address: string }) {
           <ul className="cards" aria-label="Squeeks at this address">
             {tokens.map((t) => (
               <li key={t.tokenId} className="card">
-                <a className="card-link" href={`#/squeek/${t.tokenId}`} aria-label={`Squeek ${t.tokenId}, level ${t.level}`}>
+                <a className="card-link" href={`./squeek/${t.tokenId}/`} aria-label={`Squeek ${t.tokenId}, level ${t.level}`}>
                   <SqueekImage tokenId={t.tokenId} />
                   <div className="card-body">
                     <p className="card-title">#{t.tokenId}</p>

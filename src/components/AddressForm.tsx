@@ -1,9 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { isAddress, ZERO } from "../api";
 
 export function AddressForm({ initial, target = "/" }: { initial: string; target?: string }) {
   const [value, setValue] = useState(initial);
   const [error, setError] = useState("");
+  useEffect(() => {
+    setValue(initial);
+    setError("");
+  }, [initial]);
   const submit = (e: FormEvent) => {
     e.preventDefault();
     const v = value.trim();

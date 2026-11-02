@@ -56,6 +56,7 @@ export const DOC = {
   economy: `${DOCS}/developers/api/#economy-state`,
   account: `${DOCS}/developers/api/#account`,
   activity: `${DOCS}/developers/api/#account-activity`,
+  events: `${DOCS}/developers/api/#events`,
   squeek: `${DOCS}/developers/api/#squeek`,
   deployments: `${DOCS}/developers/#deployments`,
   share: `${DOCS}/squeeks/overview/#how-each-blocks-sqk-is-shared`,

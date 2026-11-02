@@ -4,20 +4,28 @@ export interface Route {
   path: string[];
   query: URLSearchParams;
 }
-function parseHash(): Route {
-  const raw = window.location.hash.replace(/^#/, "") || "/";
+function parseLocation(): Route {
+  // Hash routes remain aliases. A direct token URL also works under a gateway subpath.
+  const tokenPath = window.location.pathname.match(/(?:^|\/)squeek\/([^/]+)\/?$/);
+  const raw = window.location.hash.startsWith("#/")
+    ? window.location.hash.slice(1)
+    : tokenPath ? `/squeek/${tokenPath[1]}${window.location.search}` : `/${window.location.search}`;
   const [p, q = ""] = raw.split("?");
   return { path: p.split("/").filter(Boolean), query: new URLSearchParams(q) };
 }
 export function useRoute(): Route {
-  const [route, setRoute] = useState(parseHash);
+  const [route, setRoute] = useState(parseLocation);
   useEffect(() => {
     const on = () => {
-      setRoute(parseHash());
+      setRoute(parseLocation());
       window.scrollTo(0, 0);
     };
     window.addEventListener("hashchange", on);
-    return () => window.removeEventListener("hashchange", on);
+    window.addEventListener("popstate", on);
+    return () => {
+      window.removeEventListener("hashchange", on);
+      window.removeEventListener("popstate", on);
+    };
   }, []);
   return route;
 }
